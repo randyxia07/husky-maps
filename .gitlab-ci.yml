@@ -3,6 +3,7 @@ stages:
   - Autocomplete
   - Priority Queues
   - Shortest Paths
+  - Collections
 
 workflow:
   auto_cancel:
@@ -121,4 +122,24 @@ DynamicProgrammingSeamFinderTests:
         - src/main/java/graphs/**/*.java
         - src/main/java/seamfinding/**/*.java
   script: ./gradlew --warning-mode=all test --tests "seamfinding.DynamicProgrammingSeamFinderTests"
+  when: always
+
+CollectionTests:
+  stage: Collections
+  rules:
+    - changes:
+        - src/main/java/collections/*.java
+        - src/test/java/collections/*.java
+        - .gitlab-ci.yml
+  script: ./gradlew --warning-mode=all test --tests "collections.CollectionTests"
+  when: always
+
+HashMapCollectionTests:
+  stage: Collections
+  rules:
+    - changes:
+        - src/main/java/collections/*.java
+        - src/test/java/collections/*.java
+        - .gitlab-ci.yml
+  script: ./gradlew --warning-mode=all test --tests "collections.HashMapCollectionTests"
   when: always

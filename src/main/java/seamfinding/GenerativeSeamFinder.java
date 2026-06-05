@@ -70,7 +70,14 @@ public class GenerativeSeamFinder implements SeamFinder {
             @Override
             public List<Edge<Node>> neighbors(Picture picture, EnergyFunction f) {
                 // TODO: Replace with your code
-                throw new UnsupportedOperationException("Not implemented yet");
+                // throw new UnsupportedOperationException("Not implemented yet");
+                // Source connects to every pixel in the leftmost column (x=0),
+                // with edge weight equal to the energy of that pixel.
+                List<Edge<Node>> result = new ArrayList<>(picture.height());
+                for (int j = 0; j < picture.height(); j++) {
+                    result.add(new Edge<>(this, new Pixel(0, j), f.apply(picture, 0, j)));
+                }
+                return result;
             }
         };
         /**
@@ -80,7 +87,9 @@ public class GenerativeSeamFinder implements SeamFinder {
             @Override
             public List<Edge<Node>> neighbors(Picture picture, EnergyFunction f) {
                 // TODO: Replace with your code
-                throw new UnsupportedOperationException("Not implemented yet");
+                // throw new UnsupportedOperationException("Not implemented yet");
+                // Sink has no outgoing neighbors.
+                return List.of();
             }
         };
 
@@ -127,7 +136,20 @@ public class GenerativeSeamFinder implements SeamFinder {
             @Override
             public List<Edge<Node>> neighbors(Picture picture, EnergyFunction f) {
                 // TODO: Replace with your code
-                throw new UnsupportedOperationException("Not implemented yet");
+                // throw new UnsupportedOperationException("Not implemented yet");
+                // Rightmost column: single edge to sink with weight 0.
+                if (x == picture.width() - 1) {
+                    return List.of(new Edge<>(this, sink, 0));
+                }
+                // Otherwise: connect to right-up, right-middle, right-down neighbors (if in bounds),
+                // with edge weight equal to the energy of the destination pixel.
+                List<Edge<Node>> result = new ArrayList<>(3);
+                for (int z = y - 1; z <= y + 1; z++) {
+                    if (z >= 0 && z < picture.height()) {
+                        result.add(new Edge<>(this, new Pixel(x + 1, z), f.apply(picture, x + 1, z)));
+                    }
+                }
+                return result;
             }
 
             @Override

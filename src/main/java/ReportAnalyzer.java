@@ -37,7 +37,24 @@ public class ReportAnalyzer {
                 .map(MatchResult::group)
                 .toList();
 
-        // TODO: Display the most commonly-reported WCAG recommendations using MinPQ
-        throw new UnsupportedOperationException();
+        // Count frequency of each WCAG tag
+        Map<String, Integer> counts = new LinkedHashMap<>();
+        for (String tag : wcagTags) {
+            counts.put(tag, counts.getOrDefault(tag, 0) + 1);
+        }
+
+        // Use a MinPQ with negated counts so the most frequent tag has the lowest priority
+        minpq.MinPQ<String> pq = new minpq.OptimizedHeapMinPQ<>();
+        for (Map.Entry<String, Integer> entry : counts.entrySet()) {
+            pq.add(entry.getKey(), -entry.getValue());
+        }
+
+        // Display most-common to least-common
+        while (!pq.isEmpty()) {
+            String tag = pq.removeMin();
+            int count = counts.get(tag);
+            String title = wcagDefinitions.getOrDefault(tag, "(unknown)");
+            System.out.println(count + "\t" + tag + "\t" + title);
+        }
     }
 }
