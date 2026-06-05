@@ -1,341 +1,297 @@
 package collections;
 
-import net.jqwik.api.Example;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import net.jqwik.api.*;
+import net.jqwik.api.constraints.DoubleRange;
+import net.jqwik.api.constraints.Size;
 
 import java.util.List;
+
+import collections.Collection.Location;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * Shared tests for {@link ResortedArrayCollection} and {@link HashMapCollection}.
- * Both implementations must produce identical results for all operations.
+ * Abstract test class for {@link Collection} implementations.
+ * Subclasses provide a specific implementation via {@link #createCollection()}.
  */
-public class CollectionTests {
+public abstract class CollectionTests {
 
-    private Collection simple;
-    private Collection improved;
+    private Collection collection;
 
-    @BeforeEach
-    void setUp() {
-        simple = new ResortedArrayCollection();
-        improved = new HashMapCollection();
+    public abstract Collection createCollection();
+
+    @Provide
+    Arbitrary<Double> rankings() {
+        return Arbitraries.doubles().between(0.0, 10.0).between(0.0, 10.0);
     }
 
-    // --- addLocation ---
+    // --- basic working tests ---
 
-    @Test
-    void addLocationCreatesCollectionImplicitly() {
-        simple.addLocation("Seattle", "Space Needle", 8.5);
-        improved.addLocation("Seattle", "Space Needle", 8.5);
-
-        assertEquals(1, simple.getTopK("Seattle", 10).size());
-        assertEquals(1, improved.getTopK("Seattle", 10).size());
+    @Example
+    void addAndTopK1() {
+        collection = createCollection();
+        collection.addLocation("coffee", "Starbucks", 8.0);
+        collection.addLocation("coffee", "Blue Bottle", 9.5);
+        assertEquals("Blue Bottle", collection.getTopK("coffee", 1).get(0).name);
     }
 
-    @Test
-    void addMultipleLocationsToSameCollection() {
-        simple.addLocation("Seattle", "Space Needle", 8.5);
-        simple.addLocation("Seattle", "Pike Place", 9.0);
-        improved.addLocation("Seattle", "Space Needle", 8.5);
-        improved.addLocation("Seattle", "Pike Place", 9.0);
-
-        assertEquals(2, simple.getTopK("Seattle", 10).size());
-        assertEquals(2, improved.getTopK("Seattle", 10).size());
+    @Property
+    void getTopK1AlwaysReturnsHighestRanking(
+            @ForAll @Size(min = 1, max = 20) List<@From("rankings") Double> rankings) {
+        collection = createCollection();
+        for (int i = 0; i < rankings.size(); i++) {
+            collection.addLocation("test", "location " + i, rankings.get(i));
+        }
+        double max = 0;
+        for (double r : rankings) {
+            max = Math.max(max, r);
+        }
+        assertEquals(max, collection.getTopK("test", 1).get(0).ranking);
     }
 
-    @Test
-    void addLocationToMultipleCollections() {
-        simple.addLocation("Seattle", "Space Needle", 8.5);
-        simple.addLocation("Portland", "Powell's Books", 9.2);
-        improved.addLocation("Seattle", "Space Needle", 8.5);
-        improved.addLocation("Portland", "Powell's Books", 9.2);
-
-        assertEquals(1, simple.getTopK("Seattle", 10).size());
-        assertEquals(1, simple.getTopK("Portland", 10).size());
-        assertEquals(1, improved.getTopK("Seattle", 10).size());
-        assertEquals(1, improved.getTopK("Portland", 10).size());
-    }
-
-    @Test
-    void addDuplicateLocationThrows() {
-        simple.addLocation("Seattle", "Space Needle", 8.5);
-        improved.addLocation("Seattle", "Space Needle", 8.5);
-
-        assertThrows(IllegalArgumentException.class,
-                () -> simple.addLocation("Seattle", "Space Needle", 7.0));
-        assertThrows(IllegalArgumentException.class,
-                () -> improved.addLocation("Seattle", "Space Needle", 7.0));
-    }
-
-    @Test
-    void addLocationAtBoundaryRankings() {
-        simple.addLocation("Seattle", "Low", 0.0);
-        simple.addLocation("Seattle", "High", 10.0);
-        improved.addLocation("Seattle", "Low", 0.0);
-        improved.addLocation("Seattle", "High", 10.0);
-
-        assertEquals("High", simple.getTopK("Seattle", 1).get(0).name);
-        assertEquals("High", improved.getTopK("Seattle", 1).get(0).name);
-    }
-
-    // --- removeLocation ---
-
-    @Test
-    void removeLocationDecreasesSize() {
-        simple.addLocation("Seattle", "Space Needle", 8.5);
-        simple.addLocation("Seattle", "Pike Place", 9.0);
-        simple.removeLocation("Seattle", "Space Needle");
-        improved.addLocation("Seattle", "Space Needle", 8.5);
-        improved.addLocation("Seattle", "Pike Place", 9.0);
-        improved.removeLocation("Seattle", "Space Needle");
-
-        assertEquals(1, simple.getTopK("Seattle", 10).size());
-        assertEquals(1, improved.getTopK("Seattle", 10).size());
-        assertEquals("Pike Place", simple.getTopK("Seattle", 1).get(0).name);
-        assertEquals("Pike Place", improved.getTopK("Seattle", 1).get(0).name);
-    }
-
-    @Test
-    void removeNonExistentLocationDoesNotThrow() {
-        simple.addLocation("Seattle", "Space Needle", 8.5);
-        improved.addLocation("Seattle", "Space Needle", 8.5);
-
-        assertDoesNotThrow(() -> simple.removeLocation("Seattle", "Nonexistent"));
-        assertDoesNotThrow(() -> improved.removeLocation("Seattle", "Nonexistent"));
-    }
-
-    @Test
-    void removeLocationFromNonExistentCollectionThrows() {
-        assertThrows(IllegalArgumentException.class,
-                () -> simple.removeLocation("Nonexistent", "Space Needle"));
-        assertThrows(IllegalArgumentException.class,
-                () -> improved.removeLocation("Nonexistent", "Space Needle"));
-    }
-
-    // --- getTopK ---
-
-    @Test
-    void getTopKReturnsHighestRankedFirst() {
-        simple.addLocation("Seattle", "Kerry Park", 7.5);
-        simple.addLocation("Seattle", "Pike Place", 9.0);
-        simple.addLocation("Seattle", "Space Needle", 8.5);
-        improved.addLocation("Seattle", "Kerry Park", 7.5);
-        improved.addLocation("Seattle", "Pike Place", 9.0);
-        improved.addLocation("Seattle", "Space Needle", 8.5);
-
-        List<Collection.Location> simpleTop = simple.getTopK("Seattle", 2);
-        List<Collection.Location> improvedTop = improved.getTopK("Seattle", 2);
-
-        assertEquals(2, simpleTop.size());
-        assertEquals(2, improvedTop.size());
-        assertEquals("Pike Place", simpleTop.get(0).name);
-        assertEquals("Pike Place", improvedTop.get(0).name);
-        assertEquals("Space Needle", simpleTop.get(1).name);
-        assertEquals("Space Needle", improvedTop.get(1).name);
-    }
-
-    @Test
-    void getTopKExceedingSizeReturnsAll() {
-        simple.addLocation("Seattle", "Space Needle", 8.5);
-        simple.addLocation("Seattle", "Pike Place", 9.0);
-        improved.addLocation("Seattle", "Space Needle", 8.5);
-        improved.addLocation("Seattle", "Pike Place", 9.0);
-
-        assertEquals(2, simple.getTopK("Seattle", 100).size());
-        assertEquals(2, improved.getTopK("Seattle", 100).size());
-    }
-
-    @Test
-    void getTopKOnEmptyCollectionReturnsEmpty() {
-        simple.addLocation("Seattle", "Space Needle", 8.5);
-        simple.removeLocation("Seattle", "Space Needle");
-        improved.addLocation("Seattle", "Space Needle", 8.5);
-        improved.removeLocation("Seattle", "Space Needle");
-
-        assertEquals(0, simple.getTopK("Seattle", 5).size());
-        assertEquals(0, improved.getTopK("Seattle", 5).size());
-    }
-
-    @Test
-    void getTopKNonExistentCollectionThrows() {
-        assertThrows(IllegalArgumentException.class,
-                () -> simple.getTopK("Nonexistent", 5));
-        assertThrows(IllegalArgumentException.class,
-                () -> improved.getTopK("Nonexistent", 5));
-    }
-
-    @Test
-    void getTopKReturnsCorrectRankings() {
-        simple.addLocation("Seattle", "Space Needle", 8.5);
-        improved.addLocation("Seattle", "Space Needle", 8.5);
-
-        assertEquals(8.5, simple.getTopK("Seattle", 1).get(0).ranking);
-        assertEquals(8.5, improved.getTopK("Seattle", 1).get(0).ranking);
-    }
-
-    // --- updateRanking ---
-
-    @Test
-    void updateRankingChangesOrder() {
-        simple.addLocation("Seattle", "Space Needle", 8.5);
-        simple.addLocation("Seattle", "Pike Place", 9.0);
-        simple.updateRanking("Seattle", "Space Needle", 9.5);
-        improved.addLocation("Seattle", "Space Needle", 8.5);
-        improved.addLocation("Seattle", "Pike Place", 9.0);
-        improved.updateRanking("Seattle", "Space Needle", 9.5);
-
-        assertEquals("Space Needle", simple.getTopK("Seattle", 1).get(0).name);
-        assertEquals("Space Needle", improved.getTopK("Seattle", 1).get(0).name);
-    }
-
-    @Test
-    void updateRankingNonExistentCollectionThrows() {
-        assertThrows(IllegalArgumentException.class,
-                () -> simple.updateRanking("Nonexistent", "Space Needle", 5.0));
-        assertThrows(IllegalArgumentException.class,
-                () -> improved.updateRanking("Nonexistent", "Space Needle", 5.0));
-    }
-
-    @Test
-    void updateRankingNonExistentLocationDoesNotThrow() {
-        simple.addLocation("Seattle", "Space Needle", 8.5);
-        improved.addLocation("Seattle", "Space Needle", 8.5);
-
-        assertDoesNotThrow(() -> simple.updateRanking("Seattle", "Nonexistent", 5.0));
-        assertDoesNotThrow(() -> improved.updateRanking("Seattle", "Nonexistent", 5.0));
-    }
-
-    // --- mergeCollections ---
-
-    @Test
-    void mergeCollectionsMovesLocations() {
-        simple.addLocation("Seattle", "Space Needle", 8.5);
-        simple.addLocation("Portland", "Powell's Books", 9.2);
-        simple.mergeCollections("Portland", "Seattle");
-        improved.addLocation("Seattle", "Space Needle", 8.5);
-        improved.addLocation("Portland", "Powell's Books", 9.2);
-        improved.mergeCollections("Portland", "Seattle");
-
-        assertEquals(2, simple.getTopK("Seattle", 10).size());
-        assertEquals(2, improved.getTopK("Seattle", 10).size());
-    }
-
-    @Test
-    void mergeCollectionsDeletesSource() {
-        simple.addLocation("Seattle", "Space Needle", 8.5);
-        simple.addLocation("Portland", "Powell's Books", 9.2);
-        simple.mergeCollections("Portland", "Seattle");
-        improved.addLocation("Seattle", "Space Needle", 8.5);
-        improved.addLocation("Portland", "Powell's Books", 9.2);
-        improved.mergeCollections("Portland", "Seattle");
-
-        assertThrows(IllegalArgumentException.class,
-                () -> simple.getTopK("Portland", 1));
-        assertThrows(IllegalArgumentException.class,
-                () -> improved.getTopK("Portland", 1));
-    }
-
-    @Test
-    void mergeCollectionsKeepsDestinationOnConflict() {
-        simple.addLocation("Seattle", "Space Needle", 8.5);
-        simple.addLocation("Portland", "Space Needle", 5.0);
-        simple.mergeCollections("Portland", "Seattle");
-        improved.addLocation("Seattle", "Space Needle", 8.5);
-        improved.addLocation("Portland", "Space Needle", 5.0);
-        improved.mergeCollections("Portland", "Seattle");
-
-        // Destination ranking (8.5) should be preserved, not source (5.0)
-        assertEquals(8.5, simple.getTopK("Seattle", 1).get(0).ranking);
-        assertEquals(8.5, improved.getTopK("Seattle", 1).get(0).ranking);
-        assertEquals(1, simple.getTopK("Seattle", 10).size());
-        assertEquals(1, improved.getTopK("Seattle", 10).size());
-    }
-
-    @Test
-    void mergeCollectionsNonExistentCollectionThrows() {
-        simple.addLocation("Seattle", "Space Needle", 8.5);
-        improved.addLocation("Seattle", "Space Needle", 8.5);
-
-        assertThrows(IllegalArgumentException.class,
-                () -> simple.mergeCollections("Nonexistent", "Seattle"));
-        assertThrows(IllegalArgumentException.class,
-                () -> improved.mergeCollections("Nonexistent", "Seattle"));
-        assertThrows(IllegalArgumentException.class,
-                () -> simple.mergeCollections("Seattle", "Nonexistent"));
-        assertThrows(IllegalArgumentException.class,
-                () -> improved.mergeCollections("Seattle", "Nonexistent"));
-    }
-
-    // --- Both implementations agree ---
-
-    @Test
-    void bothImplementationsAgreeOnTopK() {
-        simple.addLocation("Seattle", "Kerry Park", 7.5);
-        simple.addLocation("Seattle", "Pike Place", 9.0);
-        simple.addLocation("Seattle", "Space Needle", 8.5);
-        simple.addLocation("Seattle", "Gas Works", 6.0);
-        improved.addLocation("Seattle", "Kerry Park", 7.5);
-        improved.addLocation("Seattle", "Pike Place", 9.0);
-        improved.addLocation("Seattle", "Space Needle", 8.5);
-        improved.addLocation("Seattle", "Gas Works", 6.0);
-
-        List<Collection.Location> simpleResult = simple.getTopK("Seattle", 3);
-        List<Collection.Location> improvedResult = improved.getTopK("Seattle", 3);
-
-        assertEquals(simpleResult.size(), improvedResult.size());
-        for (int i = 0; i < simpleResult.size(); i++) {
-            assertEquals(simpleResult.get(i).name, improvedResult.get(i).name);
-            assertEquals(simpleResult.get(i).ranking, improvedResult.get(i).ranking);
+    @Property
+    void getTopKIsOrdered(
+            @ForAll @Size(min = 1, max = 20) List<@From("rankings") Double> rankings) {
+        collection = createCollection();
+        for (int i = 0; i < rankings.size(); i++) {
+            collection.addLocation("test", "location " + i, rankings.get(i));
+        }
+        List<Location> topK = collection.getTopK("test", rankings.size());
+        for (int i = 0; i < topK.size() - 1; i++) {
+            assertTrue(topK.get(i).ranking >= topK.get(i + 1).ranking);
         }
     }
 
-    @Test
-    void bothImplementationsAgreeAfterUpdate() {
-        simple.addLocation("Seattle", "Space Needle", 8.5);
-        simple.addLocation("Seattle", "Pike Place", 9.0);
-        simple.updateRanking("Seattle", "Space Needle", 9.8);
-        improved.addLocation("Seattle", "Space Needle", 8.5);
-        improved.addLocation("Seattle", "Pike Place", 9.0);
-        improved.updateRanking("Seattle", "Space Needle", 9.8);
-
-        List<Collection.Location> simpleResult = simple.getTopK("Seattle", 2);
-        List<Collection.Location> improvedResult = improved.getTopK("Seattle", 2);
-
-        assertEquals(simpleResult.get(0).name, improvedResult.get(0).name);
-        assertEquals(simpleResult.get(1).name, improvedResult.get(1).name);
+    @Example
+    void removeTopUpdatesNextTop() {
+        collection = createCollection();
+        collection.addLocation("coffee", "A", 9.0);
+        collection.addLocation("coffee", "B", 7.0);
+        collection.addLocation("coffee", "C", 5.0);
+        collection.removeLocation("coffee", "A");
+        assertEquals("B", collection.getTopK("coffee", 1).get(0).name);
     }
 
-    // --- Full workflow ---
+    @Property
+    void removeDecreasesSize(
+            @ForAll @Size(min = 1, max = 20) List<@From("rankings") Double> rankings) {
+        collection = createCollection();
+        for (int i = 0; i < rankings.size(); i++) {
+            collection.addLocation("test", "location " + i, rankings.get(i));
+        }
+        collection.removeLocation("test", "location 0");
+        assertEquals(rankings.size() - 1, collection.size("test"));
+    }
+
+    @Property
+    void removeDoesNotContain(
+            @ForAll @Size(min = 1, max = 20) List<@From("rankings") Double> rankings) {
+        collection = createCollection();
+        for (int i = 0; i < rankings.size(); i++) {
+            collection.addLocation("test", "location " + i, rankings.get(i));
+        }
+        collection.removeLocation("test", "location 0");
+        assertFalse(collection.contains("test", "location 0"));
+    }
 
     @Example
-    void fullWorkflow() {
-        Collection c = new HashMapCollection();
+    void updateChangesRanking() {
+        collection = createCollection();
+        collection.addLocation("coffee", "Starbucks", 5.0);
+        collection.updateRanking("coffee", "Starbucks", 9.0);
+        assertEquals(9.0, collection.getTopK("coffee", 1).get(0).ranking);
+    }
 
-        c.addLocation("Seattle", "Space Needle", 8.5);
-        c.addLocation("Seattle", "Pike Place", 9.0);
-        c.addLocation("Seattle", "Kerry Park", 7.5);
-        c.addLocation("Portland", "Powell's Books", 9.2);
-        c.addLocation("Portland", "Multnomah Falls", 8.8);
+    @Example
+    void updateChangesOrder() {
+        collection = createCollection();
+        collection.addLocation("coffee", "A", 9.0);
+        collection.addLocation("coffee", "B", 5.0);
+        collection.updateRanking("coffee", "A", 1.0);
+        assertEquals("B", collection.getTopK("coffee", 1).get(0).name);
+    }
 
-        // Top 2 from Seattle
-        List<Collection.Location> top2 = c.getTopK("Seattle", 2);
-        assertEquals(2, top2.size());
-        assertEquals("Pike Place", top2.get(0).name);
-        assertEquals("Space Needle", top2.get(1).name);
+    @Property
+    void updateDoesNotChangeSizeOrContains(
+            @ForAll @Size(min = 1, max = 20) List<@From("rankings") Double> rankings,
+            @ForAll @DoubleRange(min = 0, max = 10) double newRanking) {
+        collection = createCollection();
+        for (int i = 0; i < rankings.size(); i++) {
+            collection.addLocation("test", "location " + i, rankings.get(i));
+        }
+        collection.updateRanking("test", "location 0", newRanking);
+        assertEquals(rankings.size(), collection.size("test"));
+        assertTrue(collection.contains("test", "location 0"));
+    }
 
-        // Update a ranking and verify new order
-        c.updateRanking("Seattle", "Kerry Park", 9.9);
-        assertEquals("Kerry Park", c.getTopK("Seattle", 1).get(0).name);
+    @Property
+    void updateTopKStillOrdered(
+            @ForAll @Size(min = 2, max = 20) List<@From("rankings") Double> rankings,
+            @ForAll @DoubleRange(min = 0, max = 10) double newRanking) {
+        collection = createCollection();
+        for (int i = 0; i < rankings.size(); i++) {
+            collection.addLocation("test", "location " + i, rankings.get(i));
+        }
+        collection.updateRanking("test", "location 0", newRanking);
+        List<Location> topK = collection.getTopK("test", rankings.size());
+        for (int i = 0; i < topK.size() - 1; i++) {
+            assertTrue(topK.get(i).ranking >= topK.get(i + 1).ranking);
+        }
+    }
 
-        // Remove a location
-        c.removeLocation("Seattle", "Pike Place");
-        assertEquals(2, c.getTopK("Seattle", 10).size());
+    @Property
+    void mergeDestinationContainsAllUniqueLocations(
+            @ForAll @Size(min = 1, max = 10) List<@From("rankings") Double> sourceRankings,
+            @ForAll @Size(min = 1, max = 10) List<@From("rankings") Double> destRankings) {
+        collection = createCollection();
+        for (int i = 0; i < sourceRankings.size(); i++) {
+            collection.addLocation("source", "s" + i, sourceRankings.get(i));
+        }
+        for (int i = 0; i < destRankings.size(); i++) {
+            collection.addLocation("dest", "d" + i, destRankings.get(i));
+        }
+        collection.mergeCollections("source", "dest");
+        for (int i = 0; i < destRankings.size(); i++) {
+            assertTrue(collection.contains("dest", "d" + i));
+        }
+        for (int i = 0; i < sourceRankings.size(); i++) {
+            assertTrue(collection.contains("dest", "s" + i));
+        }
+    }
 
-        // Merge Portland into Seattle
-        c.mergeCollections("Portland", "Seattle");
-        assertEquals(4, c.getTopK("Seattle", 10).size());
-        assertThrows(IllegalArgumentException.class, () -> c.getTopK("Portland", 1));
+    @Property
+    void mergeResultIsOrdered(
+            @ForAll @Size(min = 1, max = 10) List<@From("rankings") Double> sourceRankings,
+            @ForAll @Size(min = 1, max = 10) List<@From("rankings") Double> destRankings) {
+        collection = createCollection();
+        for (int i = 0; i < sourceRankings.size(); i++) {
+            collection.addLocation("source", "s" + i, sourceRankings.get(i));
+        }
+        for (int i = 0; i < destRankings.size(); i++) {
+            collection.addLocation("dest", "d" + i, destRankings.get(i));
+        }
+        collection.mergeCollections("source", "dest");
+        int total = collection.size("dest");
+        List<Location> all = collection.getTopK("dest", total);
+        for (int i = 0; i < all.size() - 1; i++) {
+            assertTrue(all.get(i).ranking >= all.get(i + 1).ranking);
+        }
+    }
+
+    // --- exception tests ---
+
+    @Example
+    void addDuplicateThrows() {
+        collection = createCollection();
+        collection.addLocation("coffee", "Starbucks", 8.0);
+        assertThrows(IllegalArgumentException.class, () ->
+                collection.addLocation("coffee", "Starbucks", 5.0));
+    }
+
+    @Example
+    void addRankingTooHighThrows() {
+        collection = createCollection();
+        assertThrows(IllegalArgumentException.class, () ->
+                collection.addLocation("coffee", "Starbucks", 10.1));
+    }
+
+    @Example
+    void addLocationRankingNegativeThrows() {
+        collection = createCollection();
+        assertThrows(IllegalArgumentException.class, () ->
+                collection.addLocation("coffee", "Starbucks", -0.1));
+    }
+
+    @Example
+    void removeNonExistentCollectionThrows() {
+        collection = createCollection();
+        assertThrows(IllegalArgumentException.class, () ->
+                collection.removeLocation("coffee", "Starbucks"));
+    }
+
+    @Example
+    void removeLocationNonExistentLocationThrows() {
+        collection = createCollection();
+        collection.addLocation("coffee", "Starbucks", 8.0);
+        assertThrows(IllegalArgumentException.class, () ->
+                collection.removeLocation("coffee", "Ghost Cafe"));
+    }
+
+    @Example
+    void containsNonExistentCollectionThrows() {
+        collection = createCollection();
+        assertThrows(IllegalArgumentException.class, () ->
+                collection.contains("ghost", "Starbucks"));
+    }
+
+    @Example
+    void getTopKNonExistentCollectionThrows() {
+        collection = createCollection();
+        assertThrows(IllegalArgumentException.class, () ->
+                collection.getTopK("ghost", 3));
+    }
+
+    @Example
+    void updateRankingNonExistentCollectionThrows() {
+        collection = createCollection();
+        assertThrows(IllegalArgumentException.class, () ->
+                collection.updateRanking("ghost", "Starbucks", 5.0));
+    }
+
+    @Example
+    void updateRankingNonExistentLocationThrows() {
+        collection = createCollection();
+        collection.addLocation("coffee", "Starbucks", 8.0);
+        assertThrows(IllegalArgumentException.class, () ->
+                collection.updateRanking("coffee", "Ghost Cafe", 5.0));
+    }
+
+    @Example
+    void updateRankingTooHighThrows() {
+        collection = createCollection();
+        collection.addLocation("coffee", "Starbucks", 8.0);
+        assertThrows(IllegalArgumentException.class, () ->
+                collection.updateRanking("coffee", "Starbucks", 10.1));
+    }
+
+    @Example
+    void updateRankingNegativeThrows() {
+        collection = createCollection();
+        collection.addLocation("coffee", "Starbucks", 8.0);
+        assertThrows(IllegalArgumentException.class, () ->
+                collection.updateRanking("coffee", "Starbucks", -0.1));
+    }
+
+    @Example
+    void mergeNonExistentSourceThrows() {
+        collection = createCollection();
+        collection.addLocation("coffee", "Starbucks", 8.0);
+        assertThrows(IllegalArgumentException.class, () ->
+                collection.mergeCollections("ghost", "coffee"));
+    }
+
+    @Example
+    void mergeNonExistentDestinationThrows() {
+        collection = createCollection();
+        collection.addLocation("coffee", "Starbucks", 8.0);
+        assertThrows(IllegalArgumentException.class, () ->
+                collection.mergeCollections("coffee", "ghost"));
+    }
+
+    @Example
+    void mergeBothNonExistentThrows() {
+        collection = createCollection();
+        assertThrows(IllegalArgumentException.class, () ->
+                collection.mergeCollections("ghost1", "ghost2"));
+    }
+
+    @Example
+    void mergeRemovesSourceCollection() {
+        collection = createCollection();
+        collection.addLocation("coffee", "A", 8.0);
+        collection.addLocation("tea", "B", 9.0);
+        collection.mergeCollections("tea", "coffee");
+        assertThrows(IllegalArgumentException.class, () ->
+                collection.contains("tea", "B"));
     }
 }

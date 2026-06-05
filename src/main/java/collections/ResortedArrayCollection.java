@@ -26,24 +26,25 @@ public class ResortedArrayCollection implements Collection {
 
     @Override
     public void addLocation(String collection, String location, double ranking) {
-        // Only create a new list if the collection does not already exist
-        this.collections.putIfAbsent(collection, new ArrayList<>());
-        List<Location> locationList = this.collections.get(collection);
-
-        if (collectionContains(collection, location)) {
-            throw new IllegalArgumentException("Collection already contains location: " + location);
+        if (this.collections.containsKey(collection) && contains(collection, location)) {
+            throw new IllegalArgumentException("Collection already contains location");
         }
-
+        if (ranking < 0.0 || ranking > 10.0) {
+            throw new IllegalArgumentException("Ranking must be between 0 and 10");
+        }
+        if (!this.collections.containsKey(collection)) {
+            this.collections.put(collection, new ArrayList<>());
+        }
+        List<Location> locationList = this.collections.get(collection);
         locationList.add(new Location(location, ranking));
         Collections.sort(locationList, Collections.reverseOrder());
     }
 
     @Override
     public void removeLocation(String collection, String location) {
-        if (!this.collections.containsKey(collection)) {
-            throw new IllegalArgumentException("Collection does not exist: " + collection);
+        if (!this.collections.containsKey(collection) || !contains(collection, location)) {
+            throw new IllegalArgumentException("Collection or location does not exist");
         }
-
         List<Location> locationList = this.collections.get(collection);
         Iterator<Location> it = locationList.iterator();
         while (it.hasNext()) {
@@ -52,6 +53,27 @@ public class ResortedArrayCollection implements Collection {
                 return;
             }
         }
+    }
+
+    @Override
+    public boolean contains(String collection, String location) {
+        if (!this.collections.containsKey(collection)) {
+            throw new IllegalArgumentException("Collection does not exist: " + collection);
+        }
+        for (Location l : this.collections.get(collection)) {
+            if (l.name.equals(location)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    @Override
+    public int size(String collection) {
+        if (!this.collections.containsKey(collection)) {
+            return 0;
+        }
+        return this.collections.get(collection).size();
     }
 
     @Override
@@ -69,6 +91,12 @@ public class ResortedArrayCollection implements Collection {
         if (!this.collections.containsKey(collection)) {
             throw new IllegalArgumentException("Collection does not exist: " + collection);
         }
+        if (!contains(collection, location)) {
+            throw new IllegalArgumentException("Location does not exist: " + location);
+        }
+        if (newRanking < 0.0 || newRanking > 10.0) {
+            throw new IllegalArgumentException("Ranking must be between 0 and 10");
+        }
         List<Location> locationList = this.collections.get(collection);
         for (Location l : locationList) {
             if (l.name.equals(location)) {
@@ -85,31 +113,13 @@ public class ResortedArrayCollection implements Collection {
                 !this.collections.containsKey(destinationCollection)) {
             throw new IllegalArgumentException("Collection does not exist");
         }
-
         List<Location> sourceList = this.collections.get(sourceCollection);
         for (Location l : sourceList) {
-            if (!collectionContains(destinationCollection, l.name)) {
+            if (!contains(destinationCollection, l.name)) {
                 this.collections.get(destinationCollection).add(l);
             }
         }
-
         Collections.sort(this.collections.get(destinationCollection), Collections.reverseOrder());
         this.collections.remove(sourceCollection);
-    }
-
-    /**
-     * Returns true if the given collection contains a location with the given name.
-     */
-    private boolean collectionContains(String collection, String location) {
-        List<Location> locationList = this.collections.get(collection);
-        if (locationList == null) {
-            return false;
-        }
-        for (Location l : locationList) {
-            if (l.name.equals(location)) {
-                return true;
-            }
-        }
-        return false;
     }
 }

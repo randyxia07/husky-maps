@@ -32,14 +32,14 @@ public class HashMapCollection implements Collection {
 
     @Override
     public void addLocation(String collection, String location, double ranking) {
-        // Only create a new map if the collection does not already exist
+        if (ranking < 0.0 || ranking > 10.0) {
+            throw new IllegalArgumentException("Ranking must be between 0 and 10");
+        }
         this.collections.putIfAbsent(collection, new HashMap<>());
         Map<String, Double> locationMap = this.collections.get(collection);
-
         if (locationMap.containsKey(location)) {
             throw new IllegalArgumentException("Collection already contains location: " + location);
         }
-
         // O(1) average — no sorting needed
         locationMap.put(location, ranking);
     }
@@ -49,9 +49,28 @@ public class HashMapCollection implements Collection {
         if (!this.collections.containsKey(collection)) {
             throw new IllegalArgumentException("Collection does not exist: " + collection);
         }
-
+        Map<String, Double> locationMap = this.collections.get(collection);
+        if (!locationMap.containsKey(location)) {
+            throw new IllegalArgumentException("Location does not exist: " + location);
+        }
         // O(1) average — no linear search needed
-        this.collections.get(collection).remove(location);
+        locationMap.remove(location);
+    }
+
+    @Override
+    public boolean contains(String collection, String location) {
+        if (!this.collections.containsKey(collection)) {
+            throw new IllegalArgumentException("Collection does not exist: " + collection);
+        }
+        return this.collections.get(collection).containsKey(location);
+    }
+
+    @Override
+    public int size(String collection) {
+        if (!this.collections.containsKey(collection)) {
+            return 0;
+        }
+        return this.collections.get(collection).size();
     }
 
     @Override
@@ -59,15 +78,13 @@ public class HashMapCollection implements Collection {
         if (!this.collections.containsKey(collection)) {
             throw new IllegalArgumentException("Collection does not exist: " + collection);
         }
-
-        // Build a list of Location objects from the map and sort once
+        // Build a list of Location objects and sort once on demand
         Map<String, Double> locationMap = this.collections.get(collection);
         List<Location> locationList = new ArrayList<>();
         for (Map.Entry<String, Double> entry : locationMap.entrySet()) {
             locationList.add(new Location(entry.getKey(), entry.getValue()));
         }
         Collections.sort(locationList, Collections.reverseOrder());
-
         int limit = Math.min(k, locationList.size());
         return new ArrayList<>(locationList.subList(0, limit));
     }
@@ -77,12 +94,15 @@ public class HashMapCollection implements Collection {
         if (!this.collections.containsKey(collection)) {
             throw new IllegalArgumentException("Collection does not exist: " + collection);
         }
-
-        // O(1) average — just update the value in the map, no re-sorting
         Map<String, Double> locationMap = this.collections.get(collection);
-        if (locationMap.containsKey(location)) {
-            locationMap.put(location, newRanking);
+        if (!locationMap.containsKey(location)) {
+            throw new IllegalArgumentException("Location does not exist: " + location);
         }
+        if (newRanking < 0.0 || newRanking > 10.0) {
+            throw new IllegalArgumentException("Ranking must be between 0 and 10");
+        }
+        // O(1) average — just update the value, no re-sorting
+        locationMap.put(location, newRanking);
     }
 
     @Override
@@ -91,17 +111,14 @@ public class HashMapCollection implements Collection {
                 !this.collections.containsKey(destinationCollection)) {
             throw new IllegalArgumentException("Collection does not exist");
         }
-
         Map<String, Double> sourceMap = this.collections.get(sourceCollection);
         Map<String, Double> destMap = this.collections.get(destinationCollection);
-
-        // For each location in source, add to destination only if not already present
+        // Add each source location to destination only if not already present
         for (Map.Entry<String, Double> entry : sourceMap.entrySet()) {
             if (!destMap.containsKey(entry.getKey())) {
                 destMap.put(entry.getKey(), entry.getValue());
             }
         }
-
         // Delete the source collection
         this.collections.remove(sourceCollection);
     }
