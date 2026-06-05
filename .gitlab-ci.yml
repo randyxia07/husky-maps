@@ -124,14 +124,14 @@ DynamicProgrammingSeamFinderTests:
   script: ./gradlew --warning-mode=all test --tests "seamfinding.DynamicProgrammingSeamFinderTests"
   when: always
 
-CollectionTests:
+ResortedArrayCollectionTests:
   stage: Collections
   rules:
     - changes:
         - src/main/java/collections/*.java
         - src/test/java/collections/*.java
         - .gitlab-ci.yml
-  script: ./gradlew --warning-mode=all test --tests "collections.CollectionTests"
+  script: ./gradlew --warning-mode=all test --tests "collections.ResortedArrayCollectionTests"
   when: always
 
 HashMapCollectionTests:
