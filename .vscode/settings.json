@@ -1,5 +1,5 @@
 {
-    "chat.disableAIFeatures": true,
+    "chat.disableAIFeatures": false,
     "debug.console.collapseIdenticalLines": false,
     "editor.lightbulb.enabled": "off",
     "editor.snippets.codeActions.enabled": false,
