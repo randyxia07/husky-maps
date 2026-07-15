@@ -1,0 +1,145 @@
+stages:
+  - Deques
+  - Autocomplete
+  - Priority Queues
+  - Shortest Paths
+  - Collections
+
+workflow:
+  auto_cancel:
+    on_job_failure: none
+
+ArrayListDequeTests:
+  stage: Deques
+  rules:
+    - changes:
+        - src/main/java/deques/*.java
+  script: ./gradlew --warning-mode=all test --tests "deques.ArrayListDequeTests"
+  when: always
+
+ArrayDequeTests:
+  stage: Deques
+  rules:
+    - changes:
+        - src/main/java/deques/*.java
+  script: ./gradlew --warning-mode=all test --tests "deques.ArrayDequeTests"
+  when: always
+
+LinkedDequeTests:
+  stage: Deques
+  rules:
+    - changes:
+        - src/main/java/deques/*.java
+  script: ./gradlew --warning-mode=all test --tests "deques.LinkedDequeTests"
+  when: always
+
+TreeSetAutocompleteTests:
+  stage: Autocomplete
+  rules:
+    - changes:
+        - src/main/java/autocomplete/*.java
+  script: ./gradlew --warning-mode=all test --tests "autocomplete.TreeSetAutocompleteTests"
+  when: always
+
+SequentialSearchAutocompleteTests:
+  stage: Autocomplete
+  rules:
+    - changes:
+        - src/main/java/autocomplete/*.java
+  script: ./gradlew --warning-mode=all test --tests "autocomplete.SequentialSearchAutocompleteTests"
+  when: always
+
+BinarySearchAutocompleteTests:
+  stage: Autocomplete
+  rules:
+    - changes:
+        - src/main/java/autocomplete/*.java
+  script: ./gradlew --warning-mode=all test --tests "autocomplete.BinarySearchAutocompleteTests"
+  when: always
+
+TernarySearchTreeAutocompleteTests:
+  stage: Autocomplete
+  rules:
+    - changes:
+        - src/main/java/autocomplete/*.java
+  script: ./gradlew --warning-mode=all test --tests "autocomplete.TernarySearchTreeAutocompleteTests"
+  when: always
+
+DoubleMapMinPQTests:
+  stage: Priority Queues
+  rules:
+    - changes:
+        - src/main/java/minpq/*.java
+  script: ./gradlew --warning-mode=all test --tests "minpq.DoubleMapMinPQTests"
+  when: always
+
+UnsortedArrayMinPQTests:
+  stage: Priority Queues
+  rules:
+    - changes:
+        - src/main/java/minpq/*.java
+  script: ./gradlew --warning-mode=all test --tests "minpq.UnsortedArrayMinPQTests"
+  when: always
+
+HeapMinPQTests:
+  stage: Priority Queues
+  rules:
+    - changes:
+        - src/main/java/minpq/*.java
+  script: ./gradlew --warning-mode=all test --tests "minpq.HeapMinPQTests"
+  when: always
+
+OptimizedHeapMinPQTests:
+  stage: Priority Queues
+  rules:
+    - changes:
+        - src/main/java/minpq/*.java
+  script: ./gradlew --warning-mode=all test --tests "minpq.OptimizedHeapMinPQTests"
+  when: always
+
+AdjacencyListSeamFinderTests:
+  stage: Shortest Paths
+  rules:
+    - changes:
+        - src/main/java/graphs/**/*.java
+        - src/main/java/seamfinding/**/*.java
+  script: ./gradlew --warning-mode=all test --tests "seamfinding.AdjacencyListSeamFinder*Tests"
+  when: always
+
+GenerativeSeamFinderTests:
+  stage: Shortest Paths
+  rules:
+    - changes:
+        - src/main/java/graphs/**/*.java
+        - src/main/java/seamfinding/**/*.java
+  script: ./gradlew --warning-mode=all test --tests "seamfinding.GenerativeSeamFinder*Tests"
+  when: always
+
+DynamicProgrammingSeamFinderTests:
+  stage: Shortest Paths
+  rules:
+    - changes:
+        - src/main/java/graphs/**/*.java
+        - src/main/java/seamfinding/**/*.java
+  script: ./gradlew --warning-mode=all test --tests "seamfinding.DynamicProgrammingSeamFinderTests"
+  when: always
+
+ResortedArrayCollectionTests:
+  stage: Collections
+  rules:
+    - changes:
+        - src/main/java/collections/*.java
+        - src/test/java/collections/*.java
+        - .gitlab-ci.yml
+  script: ./gradlew --warning-mode=all test --tests "collections.ResortedArrayCollectionTests"
+  when: always
+
+HashMapCollectionTests:
+  stage: Collections
+  rules:
+    - changes:
+        - src/main/java/collections/*.java
+        - src/test/java/collections/*.java
+        - .gitlab-ci.yml
+  script: ./gradlew --warning-mode=all test --tests "collections.HashMapCollectionTests"
+  when: always
